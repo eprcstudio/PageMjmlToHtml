@@ -1,0 +1,649 @@
+<?php namespace ProcessWire;
+
+/**
+ * A module allowing you to write your Processwire templates using MJML and get
+ * a converted HTML output using MJML API.
+ *
+ * Copyright (c) 2021 Romain Cazier
+ * Licensed under MIT License, see LICENSE
+ *
+ * https://eprc.studio
+ *
+ * For ProcessWire 3.x
+ * Copyright (c) 2021 by Ryan Cramer
+ * Licensed under GNU/GPL v2
+ *
+ * https://www.processwire.com
+ *
+ */
+class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
+
+	private $apiUrl = "https://api.mjml.io/v1/render";
+
+	public static function getModuleInfo() {
+		return [
+			"title" => "MJML to HTML",
+			"author" => "Romain Cazier",
+			"version" => "1.0.0",
+			"summary" => "Allows you to write your Processwire template using MJML and get a converted HTML output using MJML API.",
+			"href" => "https://github.com/romaincazier/PageMjmlToHtml",
+			"icon" => "code",
+			"autoload" => true,
+			"singular" => true,
+		];
+	}
+
+	public function __construct() {
+		parent::__construct();
+		$this->set("apiId", "");
+		$this->set("apiKey", "");
+		$this->set("areCredentialsValid", false);
+		$this->set("noAppendFile", 0);
+		$this->set("noPrependFile", 0);
+		$this->set("templates", []);
+	}
+
+	public function init() {
+		$this->addHookBefore("Modules::saveModuleConfigData", $this, "moduleConfigSaved");
+		if($this->apiId && $this->apiKey && $this->areCredentialsValid) {
+			$this->addHookAfter("Pages::saved", $this, "clearPageCache");
+			$this->addHookBefore("PageRender::renderPage", $this, "readFromCache");
+			$this->addHookAfter("PageRender::renderPage", $this, "convertToHtml");
+			$this->addHookAfter("ProcessPageEdit::getViewActions", $this, "addViewRaw");
+			$this->addHookAfter("ProcessPageView::execute", $this, "addCopyRaw");
+		}
+	}
+
+	/**
+	 * Clear the cache after a Page::save()
+	 * 
+	 * @param HookEvent $event
+	 * 
+	 */
+	protected function clearPageCache(HookEvent $event) {
+		$page = $event->arguments(0);
+		$template = $page->template;
+
+		if($template->name === "admin") return;
+		if(!in_array($template->id, $this->templates)) return;
+
+		$this->clearCache($page);
+	}
+
+	/**
+	 * Check if a cache already exists in the user’s language and return it
+	 * 
+	 * This will override the page’s `render` function if a cache is present
+	 * * If a `raw` GET parameter is present, display the content as text/plain
+	 * * If the template has a more recent modified timestamp than the cache’s
+	 * we regenerate the HTML from MJML
+	 * * If there is no cache, check first if we should remove prepended
+	 * / appended files
+	 * 
+	 * @param HookEvent $event
+	 * 
+	 */
+	protected function readFromCache(HookEvent $event) {
+		$parentEvent = $event->arguments(0);
+		$page = $parentEvent->object;
+		$template = $page->template;
+
+		if($template->name === "admin") return;
+		if(!in_array($template->id, $this->templates)) return;
+
+		$cache = $this->wire()->cache->getFor($this, $this->getCacheName($page));
+		if($cache && $cache["markup"] && $cache["timestamp"] > $template->modified) {
+			if($this->wire()->input->get("raw", ["1"])) {
+				header("Content-Type: text/plain");
+			}
+			$parentEvent->return = $cache["markup"];
+			$event->cancelHooks = true;
+		} else {
+			$options = $parentEvent->arguments(0) ?: [];
+			if($this->noAppendFile) {
+				$options = array_merge([
+					"appendFile" => null,
+					"appendFiles" => [],
+				], $options);
+			}
+			if($this->noPrependFile) {
+				$options = array_merge([
+					"prependFile" => null,
+					"prependFiles" => [],
+				], $options);
+			}
+			$parentEvent->arguments(0, $options);
+		}
+	}
+
+	/**
+	 * Once the page has been rendered, convert the MJML to HTML and save in
+	 * the cache. Show as text/plain if the `raw` GET parameter is present
+	 * 
+	 * A debug view will be rendered only for the superuser if there are errors.
+	 * However if the user can edit the page and there are errors the page will
+	 * display a message inviting to contact the superuser for more details
+	 * 
+	 * @param HookEvent $event
+	 * 
+	 */
+	protected function convertToHtml($event) {
+		$parentEvent = $event->arguments(0);
+		$page = $parentEvent->object;
+		$template = $page->template;
+
+		if($template->name === "admin") return;
+		if(!in_array($template->id, $this->templates)) return;
+		
+		$mjml = preg_replace("/[\r\t\f\v]+| {2,}/", "", $parentEvent->return);
+		$mjml = preg_replace("/\n{2,}/", "\n", $mjml);
+		$mjml = $this->callToApi($mjml);
+
+		$debugView = $this->renderDebugView($mjml);
+		if($debugView === false) {
+			$this->wire()->cache->saveFor($this, $this->getCacheName($page), [
+				"markup" => $mjml->html,
+				"timestamp" => time(),
+			], WireCache::expireNever);
+			if($this->wire()->input->get("raw", ["1"])) {
+				header("Content-Type: text/plain");
+			}
+			$out = $mjml->html;
+		} else {
+			$this->clearCache($page);
+			if($page->get("mailType")) {
+				$this->error(sprintf($this->_('There was an issue generating this email. Check the %1$spage%2$s to get more details'), "<a href=\"$page->httpUrl\" target=\"_blank\">", "</a>"), Notice::allowMarkup);
+				// ProMailer: return an empty string so the sending process gets cancelled
+				$out = "";
+			} elseif($this->wire()->user->isSuperuser()) {
+				$out = $debugView;
+			} elseif($page->editable()) {
+				$out = "<h1>$page->title</h1>";
+				$out .= "<p>";
+				$out .= $this->_("There was an issue generating this email. Please contact your administrator to get details");
+				$out .= "</p>";
+			} else {
+				$out = "<h1>$page->title</h1>";
+			}
+		}
+		$parentEvent->return = $out;
+	}
+
+	/**
+	 * Make a call to the MJML API using the credentials provided in the
+	 * module’s config. The HTTP code and errors (if any) are populated as well
+	 * 
+	 * @param string $mjml MJML markup to convert
+	 * @return object
+	 * 
+	 */
+	private function callToApi(string $mjml = "<mjml></mjml>") {
+		$json = json_encode($mjml);
+		$http = new WireHttp();
+		$user = base64_encode("{$this->apiId}:{$this->apiKey}");
+		$http->setHeader("authorization", "basic $user");
+		$response = $http->post($this->apiUrl, "{\"mjml\":$json}", ["use" => "curl"]);
+		$response = json_decode($response);
+		$response->code = $http->getHttpCode();
+		$response->error = $http->getError();
+		$response->mjml = $mjml;
+		return $response;
+	}
+
+	/**
+	 * Get a formatted HTTP message from the HTTP code
+	 * 
+	 * @param int $code
+	 * @return string
+	 * 
+	 */
+	private function getHttpMessage(int $code) {
+		$messages = [
+			200 => "OK",
+			400 => $this->_("Please check the error message"),
+			401 => $this->_("Please check your credentials"),
+			403 => $this->_("Your credentials do not allow this"),
+			500 => $this->_("An unknown error has occured, please try again later")
+		];
+
+		if (isset($messages[$code])) {
+			$message = $messages[$code];
+		} else {
+			$message = $messages[500];
+		}
+	
+		return $message;
+	}
+
+	/**
+	 * Render a debug view.
+	 * 
+	 * If there is no (XML) warnings or errors we just return `false`,
+	 * otherwise we provide a simple markup viewer with an highlight on
+	 * problematic lines. Note it might not be 100% accurate
+	 * 
+	 * @param object $mjml
+	 * @return string|bool
+	 * 
+	 */
+	private function renderDebugView($mjml) {
+		$debug = false;
+
+		// Check for any markup issues
+		$mjml->warnings = [];
+		$checkErrors = libxml_use_internal_errors(true);
+		$xml = simplexml_load_string($mjml->mjml);
+		if ($xml === false) {
+			foreach(libxml_get_errors() as $error) {
+				preg_match("/line (\d+)/", $error->message, $match);
+				if(count($match)) {
+					// We want a warning on the origin line as well
+					$mjml->warnings[] = (object)[
+						"line" => (int)$match[1],
+						"link" => $error->line,
+						"message" => trim($error->message),
+					];
+				}
+				$mjml->warnings[] = (object)[
+					"line" => $error->line,
+					"message" => trim($error->message),
+				];
+			}
+		}
+		libxml_clear_errors();
+		libxml_use_internal_errors($checkErrors);
+
+		// Start the debug view
+		$view = "<style>";
+		$view .= wireRenderFile(__DIR__ . "/debug.css");
+		$view .= "</style>";
+		$view .= "<section class=\"mjml2html\">";
+		$view .= "<input type=\"checkbox\" id=\"mjml2html\" checked>";
+		$view .= "<label for=\"mjml2html\" class=\"mjml2html_btn\">Code</label>";
+		$view .= "<pre>";
+
+		// Split into an array with one line of code per row
+		$code = explode("\n", $mjml->mjml);
+		// Array containing our formatted lines
+		$lines = [];
+		// We track the depth for indentation
+		$depth = 0;
+		foreach($code as $key => $c) {
+			$line = "";
+			$num = $key + 1;
+
+			// Check if there is any error for this line
+			$errors = [];
+			if(!empty($mjml->errors)) {
+				$debug = true;
+				$errors = array_filter($mjml->errors, function($item) use($num) {
+					return $item->line === $num;
+				});
+			}
+
+			// Check if there is any warning for this line
+			$warnings = [];
+			if(!empty($mjml->warnings)) {
+				$debug = true;
+				$warnings = array_filter($mjml->warnings, function($item) use($num) {
+					return $item->line === $num;
+				});
+			}
+
+			// Wrap the line with a error/warning message
+			if(!empty($errors)) {
+				if(!empty($warnings)) {
+					$errors = array_merge($errors, $warnings);
+				}
+				$line .= "<span class=\"error\" data-message=\"";
+				$line .= trim(array_reduce($errors, function($carry, $item) {
+					$carry .= $item->message . "\n";
+					return $carry;
+				}));
+				$line .= "\">";
+			} elseif(!empty($warnings)) {
+				$line .= "<span class=\"warning\" data-message=\"";
+				$line .= trim(array_reduce($warnings, function($carry, $item) {
+					$carry .= $item->message . "\n";
+					return $carry;
+				}));
+				$line .= "\">";
+			}
+
+			$line .= "<span class=\"line\">$num</span>";
+
+			// Indentation
+			preg_match_all("/<(?!\/)[^>]+(?<!\/)>/", $c, $openingTags);
+			preg_match_all("/<\/[^>]+>/", $c, $closingTags);
+			if(count($openingTags[0]) < count($closingTags[0])) {
+				$depth--;
+			}
+			for($i = 0; $i < $depth; $i++) {
+				$line .= "\t";
+			}
+			if(count($openingTags[0]) > count($closingTags[0])) {
+				$depth++;
+			}
+
+			$line .= htmlentities($c);
+
+			if(!empty($errors) || !empty($warnings)) {
+				$line .= "</span>";
+			}
+
+			$lines[] = $line;
+		}
+
+		// Add the formatted lines in the debug view
+		$view .= implode("\n", $lines);
+		$view .= "</pre>";
+		$view .= "<div>";
+		if($mjml->code === 200) {
+			$view .= $mjml->html;
+		} else {
+			$debug = true;
+			$view .= "<div class=\"error\">";
+			$view .= $this->getHttpMessage($mjml->code);
+			if($mjml->code === 400) {
+				$view .= ":<br>$mjml->message";
+			}
+			$view .= "</div>";
+		}
+		$view .= "</div>";
+		$view .= "</section>";
+		
+		if($debug) {
+			$debug = $view;
+		}
+
+		return $debug;
+	}
+
+	/**
+	 * Add a “Copy Raw Text” button only when viewing the page, not in its raw
+	 * format, if the user can edit it and if there are no errors
+	 * 
+	 * @param HookEvent $event
+	 * 
+	 */
+	protected function addCopyRaw(HookEvent $event) {
+		$page = $event->object->getPage();
+		$template = $page->template;
+
+		if($template->name === "admin") return;
+		if(!in_array($template->id, $this->templates)) return;
+		if(!$page->editable()) return;
+		if($this->wire()->input->get("raw", ["1"])) return;
+		if(!$this->wire()->cache->getFor($this, $this->getCacheName($page))) return;
+
+		$event->return = $this->renderRawButton($page) . $event->return;
+	}
+
+	/**
+	 * Render a “Copy Raw Text” button
+	 * 
+	 * @param Page $page
+	 * @return string
+	 * 
+	 */
+	private function renderRawButton(Page $page) {
+		$out = "<style>";
+		$out .= wireRenderFile(__DIR__ . "/debug.css");
+		$out .= "</style>";
+		$out .= "<script>";
+		$out .= wireRenderFile(__DIR__ . "/debug.js");
+		$out .= "</script>";
+		$out .= "<a href=\"{$page->httpUrl}?raw=1\" class=\"mjml2html_btn\"";
+		$out .= " data-copying=\"";
+		$out .= $this->_("Copying...");
+		$out .= "\" data-copied=\"";
+		$out .= $this->_("Copied!");
+		$out .= "\" target=\"_blank\">";
+		$out .= $this->_("Copy Raw Text");
+		$out .= "</a>";
+		return $out;
+	}
+
+	/**
+	 * Add a “Raw Code” button under the “View” one in the admin edit page
+	 * 
+	 * @param HookEvent $event
+	 * 
+	 */
+	protected function addViewRaw(HookEvent $event) {
+		$ProcessPageEdit = $event->object;
+		$page = $ProcessPageEdit->getPage();
+		$template = $page->template;
+
+		if($template->name === "admin") return;
+		if(!in_array($template->id, $this->templates)) return;
+
+		// https://github.com/processwire/processwire/blob/master/wire/modules/Process/ProcessPageEdit/ProcessPageEdit.module#L747
+
+		$url = $ProcessPageEdit->getViewUrl() . "?raw=1";
+
+		$label = "<i class=\"fa fa-fw fa-code\"></i>&nbsp;" . $this->_("Raw Code");
+		
+		$class = "";
+		$languages = $page->getLanguages();
+		$languageUrls = [];
+		if($languages) {
+			$class .= " pw-has-items";
+			foreach($languages as $language) {
+				if(!$page->viewable($language)) continue;
+				$localUrl = $page->localHttpUrl($language) . "?raw=1";
+				$languageUrls[$language->id] = $localUrl;
+			}
+		}
+
+		$name = "raw";
+		$action = "<a class=\"$class\" target=\"_blank\" href=\"$url\">$label</a>";
+		if(count($languageUrls) > 1) {
+			$ul = "<ul class=\"\">";
+			foreach($languages as $language) {
+				if(!isset($languageUrls[$language->id])) continue;
+				$localUrl = $languageUrls[$language->id];
+				$_label = $language->get("title|name");
+				$_action = str_replace(" pw-has-items", "", $action);
+				$_action = str_replace("\"$url\"", "\"$localUrl\"", $_action);
+				$_action = str_replace(">" . $label . "<", ">$_label<", $_action);
+				$ul .= "<li>$_action</li>";
+			}
+			$ul .= "</ul>";
+			$action = str_replace("</a>", " &nbsp;</a>", $action) . $ul;
+		} else {
+			$action = str_replace(" pw-has-items", "", $action);
+		}
+
+		$actions = $event->return;
+		$actions = array_merge([$name => $action], $actions);
+		$event->return = $actions;
+	}
+
+	/**
+	 * Get a formatted string for the cache name
+	 * 
+	 * @return string
+	 * 
+	 */
+	private function getCacheName($page) {
+		$language = $this->wire()->user->language;
+		if($language) {
+			$language = "-$language->name";
+		} else {
+			$language = "";
+		}
+		return "mjml-{$page->id}{$language}";
+	}
+
+	private function clearAllCache() {
+		$this->wire()->cache->deleteFor($this);
+	}
+
+	private function clearCache($page) {
+		$languages = $this->wire()->languages;
+		if($languages) {
+			foreach($languages as $language) {
+				$this->wire()->cache->deleteFor($this, "mjml-{$page->id}-{$language->name}");
+			}
+		} else {
+			$this->wire()->cache->deleteFor($this, "mjml-{$page->id}");
+		}
+	}
+
+	/**
+	 * Check and clear the cache and/or invalidate the credentials if applicable
+	 * 
+	 * @param HookEvent $event
+	 * 
+	 */
+	protected function moduleConfigSaved(HookEvent $event) {
+		$class = $event->arguments(0);
+		if($class != $this) return;
+
+		$data = $event->arguments(1);
+		if($data["clear"] === 1) {
+			$this->clearAllCache();
+			$this->message($this->_("Cache has been cleared"));
+		}
+		if(
+			$data["noAppendFile"] !== $this->noAppendFile
+			|| $data["noPrependFile"] !== $this->noPrependFile
+		) {
+			$this->clearAllCache();
+		}
+		if(
+			($data["apiKey"] !== $this->apiKey && !$data["apiKey"])
+			|| ($data["apiId"] !== $this->apiId && !$data["apiId"])
+		) {
+			$this->clearAllCache();
+			$modules = $this->wire()->modules;
+			$moduleConfig = $modules->getModuleConfigData($this);
+			$moduleConfig["areCredentialsValid"] = false;
+			$modules->saveModuleConfigData($this, $moduleConfig);
+		}
+	}
+
+	public function getModuleConfigInputfields(InputfieldWrapper $inputfields) {
+		$modules = $this->wire()->modules;
+		$moduleConfig = $modules->getModuleConfigData($this);
+
+		$error = "";
+		$valid = false;
+		if($this->apiId && $this->apiKey) {
+			$response = $this->callToApi();
+			if($response->code !== 200) {
+				$error = $this->getHttpMessage($response->code);
+				$this->error("{$response->error} {$response->message}");
+			} else {
+				$valid = true;
+				if($moduleConfig["areCredentialsValid"] !== $valid) {
+					$this->message($this->_("Your credentials are valid and the API is ready to use"));
+				}
+			}
+			if($moduleConfig["areCredentialsValid"] !== $valid) {
+				$moduleConfig["areCredentialsValid"] = $valid;
+				$modules->saveModuleConfigData($this, $moduleConfig);
+			}
+		}
+
+		$wrapper = $modules->get("InputfieldFieldset");
+		$validLabel = $valid ? " - " . $this->_("VALIDATED") . "!" : "";
+		$wrapper->label = $this->_("MJML API Authentification") . $validLabel;
+		$wrapper->description = sprintf($this->_('Get an application ID and a secret key ([link](%s)) and paste these here'), "https://mjml.io/api/");
+		$wrapper->icon = "key";
+		$wrapper->set('themeOffset', 1); 
+
+		if($valid) {
+			$wrapper->collapsed = true;
+			$wrapper->notes = $this->_("Your credentials are valid and the API is ready to use");
+		} elseif(!$valid) {
+			$wrapper->notes = $this->_("Enter and save to continue. Your API application ID and secret key will be validated");
+		}
+
+		$f = $modules->get("InputfieldText");
+		$f->attr("name", "apiId");
+		$f->columnWidth = 50;
+		$f->label = $this->_("Application ID");
+		$f->required = true;
+		$f->value = $this->apiId;
+		if($error) {
+			$f->error($error);
+		}
+		$wrapper->add($f);
+
+		$f = $modules->get("InputfieldText");
+		$f->attr("name", "apiKey");
+		$f->columnWidth = 50;
+		$f->label = $this->_("Secret key");
+		$f->required = true;
+		$f->value = $this->apiKey;
+		if($error) {
+			$f->error($error);
+		}
+		$wrapper->add($f);
+
+		$inputfields->add($wrapper);
+
+		if (!$valid) {
+			return $inputfields;
+		}
+
+		$f = $modules->get("InputfieldAsmSelect");
+		$f->attr("name", "templates");
+		$f->label = $this->_("Templates to convert from MJML to HTML");
+		$f->icon = "envelope-o";
+
+		$templates = $this->wire()->templates;
+		foreach($templates as $t) {
+			if($t->flags & Template::flagSystem) continue; 
+			$label = $t->name;
+			$tLabel = $t->getLabel();
+			if($tLabel === $t->name) {
+				$tLabel = "";
+			}
+			$attrs = ["data-desc" => $tLabel];
+			$tIcon = $t->getIcon();
+			if($tIcon) {
+				$attrs["data-handle"] = "<i class=\"fa fa-fw fa-$tIcon\"></i>";
+			}
+			$f->addOption($t->id, $label, $attrs);
+		}
+
+		$f->value = $this->templates; 
+		$inputfields->add($f);
+
+		$f = $modules->get("InputfieldCheckbox");
+		$f->attr("name", "noAppendFile");
+		$f->checked = $this->noAppendFile;
+		$f->columnWidth = 50;
+		$f->description = sprintf($this->_('If you are using the [markup regions](%s) output strategy, it might be best to not append files to preserve your MJML markup before calling the MJML API'), "https://processwire.com/docs/front-end/output/markup-regions/");
+		$f->label = $this->_("Don’t append file(s) to selected templates");
+		$f->label2 = $this->_("Yes");
+		$f->icon = "chain-broken";
+		$f->value = $this->noAppendFile;
+		$inputfields->add($f);
+
+		$f = $modules->get("InputfieldCheckbox");
+		$f->attr("name", "noPrependFile");
+		$f->checked = $this->noPrependFile;
+		$f->columnWidth = 50;
+		$f->label = $this->_("Don’t prepend file(s) to selected templates");
+		$f->label2 = $this->_("Yes");
+		$f->icon = "chain-broken";
+		$f->showIf = "noAppendFile=1";
+		$f->value = $this->noPrependFile;
+		$inputfields->add($f);
+
+		$f = $modules->get("InputfieldCheckbox");
+		$f->attr("name", "clear");
+		$f->label = $this->_("Clear the cache for all templates ?");
+		$f->label2 = $this->_("Yes");
+		$f->icon = "trash-o";
+		$f->set('themeOffset', 1); 
+		$inputfields->add($f);
+
+		return $inputfields;
+	}
+
+}
