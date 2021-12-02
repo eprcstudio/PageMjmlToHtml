@@ -30,6 +30,7 @@ From there you can copy/paste the raw generated code in an external mailing serv
 
 - The MJML output is cached to avoid repetitive API calls
   - Not cached if there are errors/warnings
+  - Cleared if the page is saved
   - Cleared if the template file has been modified
 - A simple (dumb?) code viewer highlights lines with errors/warnings
 - A button is added to quickly copy the raw code of the generated newsletter
