@@ -6,9 +6,9 @@ A module allowing you to write your Processwire template using MJML and get a co
 
 <img width="2032" alt="Capture d’écran 2021-12-02 à 19 05 54" src="https://user-images.githubusercontent.com/6616448/144493657-8f95585c-8d25-4e33-a33e-d89a11c57ee5.png">
 
-Modules directory:
+Modules directory: [https://processwire.com/modules/page-mjml-to-html/](https://processwire.com/modules/page-mjml-to-html/)
 
-Support forum:
+Support forum: [https://processwire.com/talk/topic/26466-pagemjmltohtml/](https://processwire.com/talk/topic/26466-pagemjmltohtml/)
 
 ## About
 
