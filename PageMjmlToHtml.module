@@ -617,7 +617,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$f->attr("name", "noAppendFile");
 		$f->checked = $this->noAppendFile;
 		$f->columnWidth = 50;
-		$f->description = sprintf($this->_('If you are using the [markup regions](%s) output strategy, it might be best to not append files to preserve your MJML markup before calling the MJML API'), "https://processwire.com/docs/front-end/output/markup-regions/");
+		$f->description = sprintf($this->_('If you are using the [markup regions](%s) output strategy, it might be best to not append files to preserve your MJML markup before calling the API'), "https://processwire.com/docs/front-end/output/markup-regions/");
 		$f->label = $this->_("Don’t append file(s) to selected templates");
 		$f->label2 = $this->_("Yes");
 		$f->icon = "chain-broken";
@@ -637,7 +637,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 
 		$f = $modules->get("InputfieldCheckbox");
 		$f->attr("name", "clear");
-		$f->label = $this->_("Clear the cache for all templates ?");
+		$f->label = $this->_("Clear the cache for all templates?");
 		$f->label2 = $this->_("Yes");
 		$f->icon = "trash-o";
 		$f->set('themeOffset', 1); 

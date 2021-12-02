@@ -1,0 +1,25 @@
+en,fr,description,file,hash
+"There was an issue generating this email. Check the %1$spage%2$s to get more details","Il y a eu un problème en générant cet email. Allez sur la %1$spage%2$s pour avoir plus d’informations",,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,fd79fb2fad28a5cf2a2405a9e7f7fc3e
+"There was an issue generating this email. Please contact your administrator to get details","Il y a eu un problème en générant cet email. Contactez votre administrateur pour avoir plus d’informations",,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,fc89f1040bc0aad6ca38055a55a45c57
+"Please check the error message","Merci de regarder le message d’erreur",,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,b2f7e0c8eeda9cc02ed51c7a7e39136c
+"Please check your credentials","Merci de vérifier votre clé API",,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,1fa6f975528b9de8513b607976ee84a2
+"Your credentials do not allow this","Votre clé API n’a pas les autorisations nécessaires",,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,27889a82b487bd695a54b4ea07ce5c10
+"An unknown error has occured, please try again later","Une erreur inconnue est survenue, merci de réessayer plus tard",,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,eed2aaa2e8ff04fcd66c52c9e4be70ba
+Copying...,Copie...,,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,3029b371b7c1db9fd4721eb10b93b20a
+Copied!,"Copié !",,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,6d6db52799620de23c1e87d00abde8c4
+"Copy Raw Text","Copier Texte Brut",,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,aa51aea56ba9ec8d4aceca79e8c5de39
+"Raw Code","Code Brut",,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,498641eb9e10cdf3c1608cedf995e4b1
+"Cache has been cleared","Le cache a été vidé",,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,f152dcef37ff8deb5127c5228b0c36b3
+"Your credentials are valid and the API is ready to use","Vos informations sont vérifiées et l'API est prête à être utilisée",,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,1a69a341a17720843f01347fc35a0d0a
+VALIDATED,VALIDÉ,,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,4d6154fe02ac9bf42fd2aacfa49310b0
+"MJML API Authentification",=,,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,5c5d7afdf93d619e46ded667592e8109
+"Get an application ID and a secret key ([link](%s)) and paste these here","Obtenez un ID et une clé secrète ([lien](%s)) et copier/coller les ici",,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,d57f1262a976b0950ff1b9ddb5e7d57e
+"Enter and save to continue. Your API application ID and secret key will be validated","Entrez et sauvegardez pour continuer. Vos informations seront alors vérifiées",,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,15193449bef6b4cd00ffc23bac254b47
+"Application ID","ID de l'application",,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,e500e94f457ddd88824c88fda548bed2
+"Secret key","Clé secrète",,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,952bf87c967660b7bbd4e1eb08cefc92
+"Templates to convert from MJML to HTML","Templates à convertir de MJML à HTML",,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,6f0cfe745853d7e26c594b25ad79ed67
+"If you are using the [markup regions](%s) output strategy, it might be best to not append files to preserve your MJML markup before calling the API","Si vous utilisez la stratégie «[markup regions](%s)», il serait préférable de retirer l'ajout automatique de fichier(s) pour préserver le balisage MJML avant d'appeler l'API",,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,d9cb2ecd80ecee58b7a1bc05fa75ee20
+"Don’t append file(s) to selected templates","Ne pas ajouter de fichier(s) après les modèles sélectionnés",,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,a75cd901bdf7478354bb9f7b3deccbb9
+Yes,Oui,,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,93cba07454f06a4a960172bbd6e2a435
+"Don’t prepend file(s) to selected templates","Ne pas ajouter de fichier(s) avant les modèles sélectionnés",,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,27f3f57cfb97e6e31c6db89c790b9389
+"Clear the cache for all templates?","Vider le cache pour tous les modèles ?",,site/modules/PageMjmlToHtml/PageMjmlToHtml.module,c0de078c80bedb39a114f5d903792aca
