@@ -24,7 +24,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		return [
 			"title" => "MJML to HTML",
 			"author" => "Romain Cazier",
-			"version" => "1.0.0",
+			"version" => "1.0.1",
 			"summary" => "Allows you to write your Processwire template using MJML and get a converted HTML output using MJML API.",
 			"href" => "https://github.com/romaincazier/PageMjmlToHtml",
 			"icon" => "code",
@@ -364,18 +364,27 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 	 * Add a “Copy Raw Text” button only when viewing the page, not in its raw
 	 * format, if the user can edit it and if there are no errors
 	 * 
+	 * We need to check for ProcessWire’s version as the `getPage()` function
+	 * has been removed from ProcessPageView
+	 * 
 	 * @param HookEvent $event
 	 * 
 	 */
 	protected function addCopyRaw(HookEvent $event) {
-		$page = $event->object->getPage();
+		if($this->wire()->config->version("3.0.186")) {
+			$request = $this->wire()->pages->request();
+			$page = $request->getPage();
+		} else {
+			$page = $event->object->getPage();
+		}
+		if(!($page && $page->id)) return;
+		
 		$template = $page->template;
-
 		if($template->name === "admin") return;
 		if(!in_array($template->id, $this->templates)) return;
-		if(!$page->editable()) return;
 		if($this->wire()->input->get("raw", ["1"])) return;
 		if(!$this->wire()->cache->getFor($this, $this->getCacheName($page))) return;
+		if(!$page->editable()) return;
 
 		$event->return = $this->renderRawButton($page) . $event->return;
 	}
