@@ -33,14 +33,15 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		];
 	}
 
-	public function __construct() {
-		parent::__construct();
-		$this->set("apiId", "");
-		$this->set("apiKey", "");
-		$this->set("areCredentialsValid", false);
-		$this->set("noAppendFile", 0);
-		$this->set("noPrependFile", 0);
-		$this->set("templates", []);
+	public function getDefaults() {
+		return [
+			"apiId" => "",
+			"apiKey" => "",
+			"areCredentialsValid" => false,
+			"noAppendFile" => 0,
+			"noPrependFile" => 0,
+			"templates" => []
+		];
 	}
 
 	public function init() {
@@ -644,6 +645,10 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$inputfields->add($f);
 
 		return $inputfields;
+	}
+
+	public function ___install() {
+		$this->wire()->modules->saveModuleConfigData($this, $this->getDefaults());
 	}
 
 	public function ___uninstall() {
