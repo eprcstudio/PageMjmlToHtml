@@ -646,4 +646,8 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		return $inputfields;
 	}
 
+	public function ___uninstall() {
+		$this->clearAllCache();
+	}
+
 }
