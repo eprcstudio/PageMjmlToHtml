@@ -435,7 +435,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$label = "<i class=\"fa fa-fw fa-code\"></i>&nbsp;" . $this->_("Raw Code");
 		
 		$class = "";
-		$languages = $page->getLanguages();
+		$languages = $this->getLanguages();
 		$languageUrls = [];
 		if($languages) {
 			$class .= " pw-has-items";
@@ -491,7 +491,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 	}
 
 	private function clearCache($page) {
-		$languages = $this->wire()->languages;
+		$languages = $this->getLanguages();
 		if($languages) {
 			foreach($languages as $language) {
 				$this->wire()->cache->deleteFor($this, "mjml-{$page->id}-{$language->name}");
@@ -499,6 +499,16 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		} else {
 			$this->wire()->cache->deleteFor($this, "mjml-{$page->id}");
 		}
+	}
+
+	private function getLanguages() {
+		if(
+			$this->wire()->modules->isInstalled('LanguageSupport')
+			&& $this->wire()->modules->isInstalled('LanguageSupportPageNames')
+		) {
+			return $this->wire()->languages;
+		}
+		return false;
 	}
 
 	/**
