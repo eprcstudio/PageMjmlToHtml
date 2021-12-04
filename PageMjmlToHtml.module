@@ -256,7 +256,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 
 		// Start the debug view
 		$view = "<style>";
-		$view .= wireRenderFile(__DIR__ . "/debug.css");
+		$view .= wireRenderFile(__DIR__ . "/$this.css");
 		$view .= "</style>";
 		$view .= "<section class=\"mjml2html\">";
 		$view .= "<input type=\"checkbox\" id=\"mjml2html\" checked>";
@@ -398,10 +398,10 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 	 */
 	private function renderRawButton(Page $page) {
 		$out = "<style>";
-		$out .= wireRenderFile(__DIR__ . "/debug.css");
+		$out .= wireRenderFile(__DIR__ . "/$this.css");
 		$out .= "</style>";
 		$out .= "<script>";
-		$out .= wireRenderFile(__DIR__ . "/debug.js");
+		$out .= wireRenderFile(__DIR__ . "/$this.js");
 		$out .= "</script>";
 		$out .= "<a href=\"{$page->httpUrl}?raw=1\" class=\"mjml2html_btn\"";
 		$out .= " data-copying=\"";
