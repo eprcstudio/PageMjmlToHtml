@@ -24,7 +24,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		return [
 			"title" => "MJML to HTML",
 			"author" => "Romain Cazier",
-			"version" => "1.0.2",
+			"version" => "1.0.3",
 			"summary" => "Allows you to write your Processwire template using MJML and get a converted HTML output using MJML API.",
 			"href" => "https://github.com/romaincazier/PageMjmlToHtml",
 			"icon" => "code",
@@ -40,7 +40,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 			"areCredentialsValid" => false,
 			"noAppendFile" => 0,
 			"noPrependFile" => 0,
-			"templates" => []
+			"allowedTemplates" => []
 		];
 	}
 
@@ -66,7 +66,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$template = $page->template;
 
 		if($template->name === "admin") return;
-		if(!in_array($template->id, $this->templates)) return;
+		if(!in_array($template->id, $this->allowedTemplates)) return;
 
 		$this->clearCache($page);
 	}
@@ -90,7 +90,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$template = $page->template;
 
 		if($template->name === "admin") return;
-		if(!in_array($template->id, $this->templates)) return;
+		if(!in_array($template->id, $this->allowedTemplates)) return;
 
 		$cache = $this->wire()->cache->getFor($this, $this->getCacheName($page));
 		if($cache && $cache["markup"] && $cache["timestamp"] > $template->modified) {
@@ -134,7 +134,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$template = $page->template;
 
 		if($template->name === "admin") return;
-		if(!in_array($template->id, $this->templates)) return;
+		if(!in_array($template->id, $this->allowedTemplates)) return;
 		
 		$mjml = preg_replace("/[\r\t\f\v]+| {2,}/", "", $parentEvent->return);
 		$mjml = preg_replace("/\n{2,}/", "\n", $mjml);
@@ -381,7 +381,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		
 		$template = $page->template;
 		if($template->name === "admin") return;
-		if(!in_array($template->id, $this->templates)) return;
+		if(!in_array($template->id, $this->allowedTemplates)) return;
 		if($this->wire()->input->get("raw", ["1"])) return;
 		if(!$this->wire()->cache->getFor($this, $this->getCacheName($page))) return;
 		if(!$page->editable()) return;
@@ -426,7 +426,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$template = $page->template;
 
 		if($template->name === "admin") return;
-		if(!in_array($template->id, $this->templates)) return;
+		if(!in_array($template->id, $this->allowedTemplates)) return;
 
 		// https://github.com/processwire/processwire/blob/master/wire/modules/Process/ProcessPageEdit/ProcessPageEdit.module#L747
 
@@ -478,7 +478,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 	 */
 	private function getCacheName($page) {
 		$language = $this->wire()->user->language;
-		if($language) {
+		if($this->getLanguages() && $language) {
 			$language = "-$language->name";
 		} else {
 			$language = "";
@@ -625,8 +625,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 			}
 			$f->addOption($t->id, $label, $attrs);
 		}
-
-		$f->value = $this->templates;
+		$f->value = $this->allowedTemplates;
 		if (!$valid) {
 			$f->collapsed = Inputfield::collapsedHidden;
 		}
@@ -672,6 +671,15 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$inputfields->add($f);
 
 		return $inputfields;
+	}
+
+	public function ___upgrade($fromVersion, $toVersion) {
+		if(version_compare($fromVersion, "1.0.2", "<=")) {
+			$modules = $this->wire()->modules;
+			$moduleConfig = $modules->getModuleConfigData($this);
+			$moduleConfig["allowedTemplates"] = $moduleConfig["templates"];
+			$modules->saveModuleConfigData($this, $moduleConfig);
+		}
 	}
 
 	public function ___install() {
