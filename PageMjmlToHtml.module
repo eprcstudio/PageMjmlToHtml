@@ -408,6 +408,8 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$out .= $this->_("Copying...");
 		$out .= "\" data-copied=\"";
 		$out .= $this->_("Copied!");
+		$out .= "\" data-error=\"";
+		$out .= $this->_("Failed to copy");
 		$out .= "\" target=\"_blank\">";
 		$out .= $this->_("Copy Raw Text");
 		$out .= "</a>";
