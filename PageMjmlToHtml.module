@@ -608,7 +608,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$inputfields->add($wrapper);
 
 		$f = $modules->get("InputfieldAsmSelect");
-		$f->attr("name", "templates");
+		$f->attr("name", "allowedTemplates");
 		$f->label = $this->_("Templates to convert from MJML to HTML");
 		$f->icon = "envelope-o";
 
