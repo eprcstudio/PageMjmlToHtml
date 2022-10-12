@@ -43,6 +43,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 			"allowedTemplates" => [],
 			"superuserNoCache" => 0,
 			"rolesNoCache" => [],
+			"cachePerGet" => "",
 		];
 	}
 
@@ -417,7 +418,14 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$out .= "<script>";
 		$out .= wireRenderFile(__DIR__ . "/$this.js");
 		$out .= "</script>";
-		$out .= "<a href=\"{$page->httpUrl}?raw=1\" class=\"mjml2html_btn\"";
+		$out .= "<a href=\"{$page->httpUrl}?raw";
+		if($this->cachePerGet && count($_GET)) {
+			$get = array_key_first($_GET);
+			if(strpos($this->cachePerGet, "*") !== false || in_array($get, explode(" ", $this->cachePerGet))) {
+				$out .= "&$get";
+			}
+		}
+		$out .= "\" class=\"mjml2html_btn\"";
 		$out .= " data-copying=\"";
 		$out .= $this->_("Copying...");
 		$out .= "\" data-copied=\"";
@@ -489,17 +497,30 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 	/**
 	 * Get a formatted string for the cache name
 	 * 
+	 * The cache name will contain the language, when applicable, and the first
+	 * GET variable (other than “raw”) if present
+	 * 
 	 * @return string
 	 * 
 	 */
 	private function getCacheName($page) {
+		$cacheName = "mjml-{$page->id}";
 		$language = $this->wire()->user->language;
 		if($this->getLanguages() && $language) {
-			$language = "-$language->name";
-		} else {
-			$language = "";
+			$cacheName .= "-$language->name";
 		}
-		return "mjml-{$page->id}{$language}";
+		if($this->cachePerGet && count($_GET)) {
+			$get = array_key_first($_GET);
+			if($get === "raw" && count($_GET) > 1) {
+				$get = array_keys($_GET)[1];
+			}
+			if($get !== "raw") {
+				if(strpos($this->cachePerGet, "*") !== false || in_array($get, explode(" ", $this->cachePerGet))) {
+					$cacheName .= "-$get";
+				}
+			}
+		}
+		return $cacheName;
 	}
 
 	private function clearAllCache() {
@@ -507,14 +528,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 	}
 
 	private function clearCache($page) {
-		$languages = $this->getLanguages();
-		if($languages) {
-			foreach($languages as $language) {
-				$this->wire()->cache->deleteFor($this, "mjml-{$page->id}-{$language->name}");
-			}
-		} else {
-			$this->wire()->cache->deleteFor($this, "mjml-{$page->id}");
-		}
+		$this->wire()->cache->deleteFor($this, "mjml-{$page->id}*");
 	}
 
 	private function getLanguages() {
@@ -675,6 +689,19 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		}
 		$inputfields->add($f);
 
+		$f = $modules->get("InputfieldText");
+		$f->attr("name", "cachePerGet");
+		$f->description = $this->_("You can have a unique output per GET variables. “raw” is ignored as it’s already used by the module");
+		$f->label = $this->_("Generate output per GET variables");
+		$f->icon = "question";
+		$f->notes = $this->_("If entering more than one, separate each by a space. To generate a unique output when any variable is present, enter just an asterisk: *");
+		$f->value = $this->cachePerGet;
+		if (!$valid) {
+			$f->collapsed = Inputfield::collapsedHidden;
+		} else {
+			$f->collapsed = InputField::collapsedBlank;
+		}
+		$inputfields->add($f);
 
 		$f = $modules->get("InputfieldCheckbox");
 		$f->attr("name", "superuserNoCache");
