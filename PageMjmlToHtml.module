@@ -40,7 +40,9 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 			"areCredentialsValid" => false,
 			"noAppendFile" => 0,
 			"noPrependFile" => 0,
-			"allowedTemplates" => []
+			"allowedTemplates" => [],
+			"superuserNoCache" => 0,
+			"rolesNoCache" => [],
 		];
 	}
 
@@ -77,7 +79,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 	 * This will override the page’s `render` function if a cache is present
 	 * * If a `raw` GET parameter is present, display the content as text/plain
 	 * * If the template has a more recent modified timestamp than the cache’s
-	 * we regenerate the HTML from MJML
+	 * or if the role is set to bypass it, we regenerate the HTML from MJML
 	 * * If there is no cache, check first if we should remove prepended
 	 * / appended files
 	 * 
@@ -92,9 +94,21 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		if($template->name === "admin") return;
 		if(!in_array($template->id, $this->allowedTemplates)) return;
 
+		$bypassCache = false;
+		if($this->wire()->user->isSuperuser() && $this->superuserNoCache) {
+			$bypassCache = true;
+		} elseif(count($this->rolesNoCache)) {
+			foreach($this->rolesNoCache as $role) {
+				if($this->wire()->user->hasRole($role)) {
+					$bypassCache = true;
+					break;
+				}
+			}
+		}
+
 		$cache = $this->wire()->cache->getFor($this, $this->getCacheName($page));
-		if($cache && $cache["markup"] && $cache["timestamp"] > $template->modified) {
-			if($this->wire()->input->get("raw", ["1"])) {
+		if($cache && $cache["markup"] && $cache["timestamp"] > $template->modified && !$bypassCache) {
+			if(!is_null($this->wire()->input->get("raw"))) {
 				header("Content-Type: text/plain");
 			}
 			$parentEvent->return = $cache["markup"];
@@ -146,7 +160,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 				"markup" => $mjml->html,
 				"timestamp" => time(),
 			], WireCache::expireNever);
-			if($this->wire()->input->get("raw", ["1"])) {
+			if(!is_null($this->wire()->input->get("raw"))) {
 				header("Content-Type: text/plain");
 			}
 			$out = $mjml->html;
@@ -382,7 +396,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$template = $page->template;
 		if($template->name === "admin") return;
 		if(!in_array($template->id, $this->allowedTemplates)) return;
-		if($this->wire()->input->get("raw", ["1"])) return;
+		if(!is_null($this->wire()->input->get("raw"))) return;
 		if(!$this->wire()->cache->getFor($this, $this->getCacheName($page))) return;
 		if(!$page->editable()) return;
 
@@ -432,7 +446,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 
 		// https://github.com/processwire/processwire/blob/master/wire/modules/Process/ProcessPageEdit/ProcessPageEdit.module#L747
 
-		$url = $ProcessPageEdit->getViewUrl() . "?raw=1";
+		$url = $ProcessPageEdit->getViewUrl() . "?raw";
 
 		$label = "<i class=\"fa fa-fw fa-code\"></i>&nbsp;" . $this->_("Raw Code");
 		
@@ -443,7 +457,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 			$class .= " pw-has-items";
 			foreach($languages as $language) {
 				if(!$page->viewable($language)) continue;
-				$localUrl = $page->localHttpUrl($language) . "?raw=1";
+				$localUrl = $page->localHttpUrl($language) . "?raw";
 				$languageUrls[$language->id] = $localUrl;
 			}
 		}
@@ -656,6 +670,39 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$f->icon = "chain-broken";
 		$f->showIf = "noAppendFile=1";
 		$f->value = $this->noPrependFile;
+		if (!$valid) {
+			$f->collapsed = Inputfield::collapsedHidden;
+		}
+		$inputfields->add($f);
+
+
+		$f = $modules->get("InputfieldCheckbox");
+		$f->attr("name", "superuserNoCache");
+		$f->checked = $this->superuserNoCache === 1;
+		$f->columnWidth = 50;
+		$f->description = $this->_("The MJML output is cached to avoid making too many API calls. However, by default, the cache is cleared if you save the page or if you modify the template file. With this option you can regenerate the cache on each render");
+		$f->label = $this->_("Bypass cache for superusers?");
+		$f->label2 = $this->_("Yes");
+		$f->icon = "user";
+		if (!$valid) {
+			$f->collapsed = Inputfield::collapsedHidden;
+		} else {
+			$f->collapsed = InputField::collapsedBlank;
+		}
+		$inputfields->add($f);
+
+		$f = $modules->get("InputfieldAsmSelect");
+		$f->attr("name", "rolesNoCache");
+		$f->columnWidth = 50;
+		$f->label = $this->_("Bypass cache for specific roles?");
+		$f->icon = "users";
+		$roles = $this->wire()->roles;
+		foreach($roles->find("") as $t) {
+			if($t->name === "superuser") continue;
+			$f->addOption($t->id, $t->name);
+		}
+		$f->showIf = "superuserNoCache=1";
+		$f->value = $this->rolesNoCache;
 		if (!$valid) {
 			$f->collapsed = Inputfield::collapsedHidden;
 		}
