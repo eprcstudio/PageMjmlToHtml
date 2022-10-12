@@ -20,16 +20,22 @@ body {
 	color: #111;
 	font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen-Sans,Ubuntu,Cantarell,'Helvetica Neue',sans-serif;
 	font-size: 14px;
+	font-style: normal;
+	font-weight: normal;
 	line-height: 1.6;
 	text-decoration: none;
 	cursor: pointer;
 }
 .mjml2html_btn:hover {
-    color: #aaa;
+	color: #aaa;
+	font-style: normal;
+	font-weight: normal;
 }
 .mjml2html_btn:active {
-    background-color: #ddd;
-    color: #888;
+	background-color: #ddd;
+	color: #888;
+	font-style: normal;
+	font-weight: normal;
 }
 .mjml2html > label::before {
 	content: "Show ";
@@ -91,17 +97,17 @@ body {
 }
 .mjml2html > pre > .error:hover::before,
 .mjml2html > pre > .warning:hover::before {
-    content: attr(data-message);
-    display: block;
+	content: attr(data-message);
+	display: block;
 	width: max-content;
-    max-width: calc(50vw - 6ch);
-    padding: 5px 1ch;
-    position: absolute;
-    bottom: calc(100% + 3px);
-    background-color: #eee;
-    border-radius: 4px;
-    color: #111;
-    white-space: pre-wrap;
+	max-width: calc(50vw - 6ch);
+	padding: 5px 1ch;
+	position: absolute;
+	bottom: calc(100% + 3px);
+	background-color: #eee;
+	border-radius: 4px;
+	color: #111;
+	white-space: pre-wrap;
 	pointer-events: none;
 }
 .mjml2html > pre > .error:hover > .color {
