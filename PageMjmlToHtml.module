@@ -723,12 +723,13 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 	}
 
 	public function ___upgrade($fromVersion, $toVersion) {
+		$modules = $this->wire()->modules;
+		$moduleConfig = $modules->getModuleConfigData($this);
+		$moduleConfig = array_merge($this->getDefaults(), $moduleConfig);
 		if(version_compare($fromVersion, "1.0.2", "<=")) {
-			$modules = $this->wire()->modules;
-			$moduleConfig = $modules->getModuleConfigData($this);
 			$moduleConfig["allowedTemplates"] = $moduleConfig["templates"];
-			$modules->saveModuleConfigData($this, $moduleConfig);
 		}
+		$modules->saveModuleConfigData($this, $moduleConfig);
 	}
 
 	public function ___install() {
