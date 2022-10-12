@@ -4,7 +4,7 @@
  * A module allowing you to write your Processwire templates using MJML and get
  * a converted HTML output using MJML API.
  *
- * Copyright (c) 2021 Romain Cazier
+ * Copyright (c) 2022 EPRC
  * Licensed under MIT License, see LICENSE
  *
  * https://eprc.studio
@@ -23,8 +23,8 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 	public static function getModuleInfo() {
 		return [
 			"title" => "MJML to HTML",
-			"author" => "Romain Cazier",
-			"version" => "1.1.2",
+			"author" => "EPRC",
+			"version" => "1.1.3",
 			"summary" => "Allows you to write your Processwire template using MJML and get a converted HTML output using MJML API.",
 			"href" => "https://github.com/romaincazier/PageMjmlToHtml",
 			"icon" => "code",
@@ -655,7 +655,6 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$f->attr("name", "allowedTemplates");
 		$f->label = $this->_("Templates to convert from MJML to HTML");
 		$f->icon = "envelope-o";
-
 		$templates = $this->wire()->templates;
 		foreach($templates as $t) {
 			if($t->flags & Template::flagSystem) continue; 
