@@ -157,6 +157,9 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 
 		$debugView = $this->renderDebugView($mjml);
 		if($debugView === false) {
+			$mjml->html = preg_replace("/[\r\t\f\v]+| {2,}/", "", $mjml->html);
+			$mjml->html = preg_replace("/\n+/", "", $mjml->html);
+			$mjml->html = preg_replace("/ style>/", ">", $mjml->html);
 			$this->wire()->cache->saveFor($this, $this->getCacheName($page), [
 				"markup" => $mjml->html,
 				"timestamp" => time(),
@@ -355,7 +358,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$view .= "</pre>";
 		$view .= "<div>";
 		if($mjml->code === 200) {
-			$view .= $mjml->html;
+			$view = str_replace("<body>", "<body>$view", $mjml->html);
 		} else {
 			$debug = true;
 			$view .= "<div class=\"error\">";
@@ -401,7 +404,8 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		if(!$this->wire()->cache->getFor($this, $this->getCacheName($page))) return;
 		if(!$page->editable()) return;
 
-		$event->return = $this->renderRawButton($page) . $event->return;
+		$rawButton = $this->renderRawButton($page);
+		$event->return = str_replace("<body>", "<body>$rawButton", $event->return);
 	}
 
 	/**
