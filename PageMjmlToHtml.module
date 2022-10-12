@@ -635,6 +635,18 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 
 		$inputfields->add($wrapper);
 
+		if($modules->isInstalled("TracyDebugger")) {
+			$f = $modules->get("InputfieldMarkup");
+			$f->description = sprintf($this->_('By default the debug bar is added on all templates and thus present when generating the markup. While this is great when debugging, once you’re done you might want to exclude the templates with the setting “[No debug bar in selected frontend templates](%s)”'), $modules->getModuleEditUrl("TracyDebugger") . "#debugBarAndPanels");
+			$f->label = $this->_("It seems you are using TracyDebugger");
+			$f->icon = "exclamation-triangle";
+			$f->set('themeOffset', 1); 
+			if (!$valid) {
+				$f->collapsed = Inputfield::collapsedHidden;
+			}
+			$inputfields->add($f);
+		}
+
 		$f = $modules->get("InputfieldAsmSelect");
 		$f->attr("name", "allowedTemplates");
 		$f->label = $this->_("Templates to convert from MJML to HTML");
