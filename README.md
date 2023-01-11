@@ -2,8 +2,6 @@
 
 A module allowing you to write your Processwire template using MJML and get a converted HTML output using MJML API.
 
-**This is considered to be in alpha and as such needs some testing before being used in production!**
-
 <img width="1440" alt="Capture d’écran 2021-12-02 à 19 05 54" src="https://user-images.githubusercontent.com/6616448/144493657-8f95585c-8d25-4e33-a33e-d89a11c57ee5.png">
 
 Modules directory: [https://processwire.com/modules/page-mjml-to-html/](https://processwire.com/modules/page-mjml-to-html/)
@@ -48,3 +46,5 @@ The code viewer is only shown to superusers. If there’s an error the page will
 - Its title and a message inviting to contact the administrator for editors
 
 If you are using the [markup regions](https://processwire.com/docs/front-end/output/markup-regions/) output strategy, it might be best to not append files to preserve your MJML markup before calling the MJML API. This option is available in the module’s settings.
+
+If your layout looks weird somehow, try disabling the minification in the options.
