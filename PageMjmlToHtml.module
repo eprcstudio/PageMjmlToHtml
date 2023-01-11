@@ -165,11 +165,13 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 				$mjml->html = preg_replace("/[\r\t\f\v]+/", "", $mjml->html);
 				$mjml->html = preg_replace("/<(\n| )*/", "<", $mjml->html);
 				$mjml->html = preg_replace("/(\n| )*>/", ">", $mjml->html);
+				$mjml->html = preg_replace("/> </", "><", $mjml->html);
 				$mjml->html = preg_replace("/(\n| )*}(\n| )*/", "}", $mjml->html);
 				$mjml->html = preg_replace("/(\n| )*{(\n| )*/", "{", $mjml->html);
 				$mjml->html = preg_replace("/\n+/", " ", $mjml->html);
 				$mjml->html = preg_replace("/ {2,}/", " ", $mjml->html);
 				$mjml->html = preg_replace("/ style>/", ">", $mjml->html);
+				$mjml->html = trim($mjml->html);
 			}
 			$this->wire()->cache->saveFor($this, $this->getCacheName($page), [
 				"markup" => $mjml->html,
