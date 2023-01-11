@@ -24,7 +24,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		return [
 			"title" => "MJML to HTML",
 			"author" => "EPRC",
-			"version" => "1.1.5",
+			"version" => "1.1.6",
 			"summary" => "Allows you to write your Processwire template using MJML and get a converted HTML output using MJML API.",
 			"href" => "https://github.com/romaincazier/PageMjmlToHtml",
 			"icon" => "code",
@@ -171,8 +171,8 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 				$mjml->html = preg_replace("/ {2,}/", " ", $mjml->html);
 				$mjml->html = preg_replace("/ style>/", ">", $mjml->html);
 				$mjml->html = preg_replace("/> </", "><", $mjml->html);
-				$mjml->html = trim($mjml->html);
 			}
+			$mjml->html = trim($mjml->html);
 			$this->wire()->cache->saveFor($this, $this->getCacheName($page), [
 				"markup" => $mjml->html,
 				"timestamp" => time(),
@@ -576,6 +576,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		if(
 			$data["noAppendFile"] !== $this->noAppendFile
 			|| $data["noPrependFile"] !== $this->noPrependFile
+			|| $data["disableMinify"] !== $this->disableMinify
 		) {
 			$this->clearAllCache();
 		}
@@ -792,6 +793,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 	}
 
 	public function ___upgrade($fromVersion, $toVersion) {
+		$this->clearAllCache();
 		$modules = $this->wire()->modules;
 		$moduleConfig = $modules->getModuleConfigData($this);
 		$moduleConfig = array_merge($this->getDefaults(), $moduleConfig);
