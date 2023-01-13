@@ -154,7 +154,9 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		
 		$mjml = $parentEvent->return;
 		if(!$this->disableMinify) {
-			$mjml = preg_replace("/[\r\t\f\v]+| {2,}/", "", $mjml);
+			$mjml = preg_replace("/(\w)\t(\w)/", '$1 $2', $mjml);
+			$mjml = preg_replace("/[\r\t\f\v]+/", "", $mjml);
+			$mjml = preg_replace("/ {2,}/", " ", $mjml);
 			$mjml = preg_replace("/\n{2,}/", "\n", $mjml);
 		}
 		$mjml = $this->callToApi($mjml);
