@@ -373,7 +373,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$view .= "</pre>";
 		$view .= "<div>";
 		if($mjml->code === 200) {
-			$view = str_replace("</body>", "$view</body>", $mjml->html);
+			$view = preg_replace('/(<body.*>)/mU', '$1'.$view, $mjml->html);
 		} else {
 			$debug = true;
 			$view .= "<div class=\"error\">";
