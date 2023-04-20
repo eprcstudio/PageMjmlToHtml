@@ -316,6 +316,8 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$xml = simplexml_load_string($mjml->mjml);
 		if ($xml === false) {
 			foreach(libxml_get_errors() as $error) {
+				// We don't want a complain about &nbsp; or other HTML entities
+				if(strpos($error->message, "Entity") !== false) continue;
 				preg_match("/line (\d+)/", $error->message, $match);
 				if(count($match)) {
 					// We want a warning on the origin line as well
