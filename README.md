@@ -24,6 +24,14 @@ Once your credentials are validated, select the template(s) in which you’re us
 
 From there you can copy/paste the raw generated code in an external mailing service or distribute your newsletter using [ProMailer](https://processwire.com/store/pro-mailer/).
 
+## Options
+
+In the module settings, you can choose to remove the prepended/appended files when using [Markup Regions](https://processwire.com/docs/front-end/output/markup-regions/).
+
+By default the module caches the output to avoid repetitive API calls. You can add GET variables for which you would like to have different cached outputs. You can also bypass the cache altogether for specific roles.
+
+You also have the option to convert relative URLs into absolute ones and even specify the prepended host and/or appended query parameters
+
 ## Features
 
 - The MJML output is cached to avoid repetitive API calls
@@ -44,7 +52,5 @@ From there you can copy/paste the raw generated code in an external mailing serv
 The code viewer is only shown to superusers. If there’s an error the page will display:
 - Only its title for guests
 - Its title and a message inviting to contact the administrator for editors
-
-If you are using the [markup regions](https://processwire.com/docs/front-end/output/markup-regions/) output strategy, it might be best to not append files to preserve your MJML markup before calling the MJML API. This option is available in the module’s settings.
 
 If your layout looks weird somehow, try disabling the minification in the options.
