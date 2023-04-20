@@ -100,20 +100,20 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		if(!in_array($template->id, $this->allowedTemplates)) return;
 
 		$bypassCache = false;
-		if($this->wire()->user->isSuperuser() && $this->superuserNoCache) {
+		if($this->user()->isSuperuser() && $this->superuserNoCache) {
 			$bypassCache = true;
 		} elseif(count($this->rolesNoCache)) {
 			foreach($this->rolesNoCache as $role) {
-				if($this->wire()->user->hasRole($role)) {
+				if($this->user()->hasRole($role)) {
 					$bypassCache = true;
 					break;
 				}
 			}
 		}
 
-		$cache = $this->wire()->cache->getFor($this, $this->getCacheName($page));
+		$cache = $this->cache()->getFor($this, $this->getCacheName($page));
 		if($cache && $cache["markup"] && $cache["timestamp"] > $template->modified && !$bypassCache) {
-			if(!is_null($this->wire()->input->get("raw"))) {
+			if(!is_null($this->input("get", "raw"))) {
 				header("Content-Type: text/plain");
 			}
 			$parentEvent->return = $cache["markup"];
@@ -208,11 +208,11 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 				$mjml->html = preg_replace("/> </", "><", $mjml->html);
 			}
 			$mjml->html = trim($mjml->html);
-			$this->wire()->cache->saveFor($this, $this->getCacheName($page), [
+			$this->cache()->saveFor($this, $this->getCacheName($page), [
 				"markup" => $mjml->html,
 				"timestamp" => time(),
 			], WireCache::expireNever);
-			if(!is_null($this->wire()->input->get("raw"))) {
+			if(!is_null($this->input("get", "raw"))) {
 				header("Content-Type: text/plain");
 			}
 			$out = $mjml->html;
@@ -222,7 +222,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 				$this->error(sprintf($this->_('There was an issue generating this email. Check the %1$spage%2$s to get more details'), "<a href=\"$page->httpUrl\" target=\"_blank\">", "</a>"), Notice::allowMarkup);
 				// ProMailer: return an empty string so the sending process gets cancelled
 				$out = "";
-			} elseif($this->wire()->user->isSuperuser()) {
+			} elseif($this->user()->isSuperuser()) {
 				$out = $debugView;
 			} elseif($page->editable()) {
 				$out = "<h1>$page->title</h1>";
@@ -453,8 +453,8 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 	 * 
 	 */
 	protected function addCopyRaw(HookEvent $event) {
-		if($this->wire()->config->version("3.0.186")) {
-			$request = $this->wire()->pages->request();
+		if($this->config()->version("3.0.186")) {
+			$request = $this->pages()->request();
 			$page = $request->getPage();
 		} else {
 			$page = $event->object->getPage();
@@ -464,8 +464,8 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$template = $page->template;
 		if($template->name === "admin") return;
 		if(!in_array($template->id, $this->allowedTemplates)) return;
-		if(!is_null($this->wire()->input->get("raw"))) return;
-		if(!$this->wire()->cache->getFor($this, $this->getCacheName($page))) return;
+		if(!is_null($this->input("get", "raw"))) return;
+		if(!$this->cache()->getFor($this, $this->getCacheName($page))) return;
 		if(!$page->editable()) return;
 
 		$rawButton = $this->renderRawButton($page);
@@ -573,7 +573,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 	 */
 	private function getCacheName($page) {
 		$cacheName = "mjml-{$page->id}";
-		$language = $this->wire()->user->language;
+		$language = $this->user()->language;
 		if($this->getLanguages() && $language) {
 			$cacheName .= "-$language->name";
 		}
@@ -592,19 +592,19 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 	}
 
 	private function clearAllCache() {
-		$this->wire()->cache->deleteFor($this);
+		$this->cache()->deleteFor($this);
 	}
 
 	private function clearCache($page) {
-		$this->wire()->cache->deleteFor($this, "mjml-{$page->id}*");
+		$this->cache()->deleteFor($this, "mjml-{$page->id}*");
 	}
 
 	private function getLanguages() {
 		if(
-			$this->wire()->modules->isInstalled('LanguageSupport')
-			&& $this->wire()->modules->isInstalled('LanguageSupportPageNames')
+			$this->modules()->isInstalled('LanguageSupport')
+			&& $this->modules()->isInstalled('LanguageSupportPageNames')
 		) {
-			return $this->wire()->languages;
+			return $this->languages();
 		}
 		return false;
 	}
@@ -636,7 +636,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 			|| ($data["apiId"] !== $this->apiId && !$data["apiId"])
 		) {
 			$this->clearAllCache();
-			$modules = $this->wire()->modules;
+			$modules = $this->modules();
 			$moduleConfig = $modules->getModuleConfigData($this);
 			$moduleConfig["areCredentialsValid"] = false;
 			$modules->saveModuleConfigData($this, $moduleConfig);
@@ -644,7 +644,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 	}
 
 	public function getModuleConfigInputfields(InputfieldWrapper $inputfields) {
-		$modules = $this->wire()->modules;
+		$modules = $this->modules();
 		$moduleConfig = $modules->getModuleConfigData($this);
 
 		$error = "";
@@ -894,7 +894,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 
 	public function ___upgrade($fromVersion, $toVersion) {
 		$this->clearAllCache();
-		$modules = $this->wire()->modules;
+		$modules = $this->modules();
 		$moduleConfig = $modules->getModuleConfigData($this);
 		$moduleConfig = array_merge($this->getDefaults(), $moduleConfig);
 		if(version_compare($fromVersion, "1.0.2", "<=")) {
@@ -904,7 +904,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 	}
 
 	public function ___install() {
-		$this->wire()->modules->saveModuleConfigData($this, $this->getDefaults());
+		$this->modules()->saveModuleConfigData($this, $this->getDefaults());
 	}
 
 	public function ___uninstall() {
