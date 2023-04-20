@@ -44,7 +44,10 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 			"superuserNoCache" => 0,
 			"rolesNoCache" => [],
 			"cachePerGet" => "",
-			"disableMinify" => false
+			"disableMinify" => 0,
+			"convertRelativeLinks" => 0,
+			"relativeLinksHost" => "",
+			"relativeLinksParams" => ""
 		];
 	}
 
@@ -148,11 +151,41 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$parentEvent = $event->arguments(0);
 		$page = $parentEvent->object;
 		$template = $page->template;
+		$rootPage = $this->sanitizer("httpUrl", $this->relativeLinksHost) ?: $this->pages(1);
 
 		if($template->name === "admin") return;
 		if(!in_array($template->id, $this->allowedTemplates)) return;
 		
 		$mjml = $parentEvent->return;
+		if($this->convertRelativeLinks) {
+			$params = $this->getRelativeLinksParams($page);
+			$mjml = preg_replace_callback(
+				'/href=(?:\"|\')(.+)(?:\"|\')/U',
+				function($matches) use ($rootPage, $params) {
+					if(
+						strpos($matches[1], "http") === 0
+						|| strpos($matches[1], "mailto") === 0
+						|| strpos($matches[1], "tel") === 0
+					) {
+						return $matches[0];
+					}
+					$href = "href=\"";
+					$href .= $rootPage->httpUrl;
+					$href .= substr($matches[1], 1);
+					if($params) {
+						if(strpos($matches[1], "?") === false) {
+							$href .= "?";
+						} else {
+							$href .= "&";
+						}
+						$href .= $params;
+					}
+					$href .= "\"";
+					return $href;
+				},
+				$mjml
+			);
+		}
 		if(!$this->disableMinify) {
 			$mjml = preg_replace("/(\w)\t(\w)/", '$1 $2', $mjml);
 			$mjml = preg_replace("/[\r\t\f\v]+/", "", $mjml);
@@ -201,6 +234,20 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 			}
 		}
 		$parentEvent->return = $out;
+	}
+
+	/**
+	 * Get sanitized query parameters with page fields value populated
+	 * 
+	 * @param Page $page
+	 * @return string
+	 * 
+	 */
+	private function getRelativeLinksParams(Page $page) {
+		if(!$this->relativeLinksParams) return "";
+		$params = $page->getText($this->relativeLinksParams, true);
+		$params = $this->sanitizer("url", "https://eprc.studio/?$params");
+		return str_replace("https://eprc.studio/?", "", $params);
 	}
 
 	/**
@@ -775,6 +822,53 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		}
 		$f->showIf = "superuserNoCache=1";
 		$f->value = $this->rolesNoCache;
+		if (!$valid) {
+			$f->collapsed = Inputfield::collapsedHidden;
+		}
+		$inputfields->add($f);
+
+		$f = $modules->get("InputfieldCheckbox");
+		$f->attr("name", "convertRelativeLinks");
+		$f->checked = $this->convertRelativeLinks === 1;
+		$f->columnWidth = 33;
+		$f->description = $this->_("Ideally you should handle this in your textarea’s setting, however in cases where you can’t you can toggle this option to convert relative links into absolute ones");
+		$f->label = $this->_("Convert relative links?");
+		$f->label2 = $this->_("Yes");
+		$f->icon = "link";
+		if (!$valid) {
+			$f->collapsed = Inputfield::collapsedHidden;
+		} else {
+			$f->collapsed = InputField::collapsedBlank;
+		}
+		$inputfields->add($f);
+
+		$f = $modules->get("InputfieldText");
+		$f->attr("name", "relativeLinksHost");
+		$f->columnWidth = 34;
+		$f->description = sprintf($this->_("By default the prepended host is the root’s page `httpUrl`"), $this->pages(1)->httpUrl);
+		$f->label = $this->_("Prepend a different host");
+		$f->icon = "link";
+		$https = $this->config("https") ? "https" : "http";
+		$hosts = "`$https://" . implode("/`, `$https://", $this->config->httpHosts) . "/`";
+		$f->notes = $this->_("Possible options from your config: ") . $hosts;
+		$f->placeholder = $this->pages(1)->httpUrl;
+		$f->showIf = "convertRelativeLinks=1";
+		$f->value = $this->relativeLinksHost;
+		if (!$valid) {
+			$f->collapsed = Inputfield::collapsedHidden;
+		}
+		$inputfields->add($f);
+
+		$f = $modules->get("InputfieldText");
+		$f->attr("name", "relativeLinksParams");
+		$f->columnWidth = 33;
+		$f->description = $this->_("You can append query parameters to converted links, i.e: if you want to have control over you `utm_` parameters. You can also use page fields within `{brackets}`");
+		$f->label = $this->_("Append query parameters");
+		$f->icon = "question";
+		$f->notes = $this->_("If a query string is already present in the url, your parameters will simply be appended");
+		$f->placeholder = "param1=value&param2=value&...";
+		$f->showIf = "convertRelativeLinks=1";
+		$f->value = $this->relativeLinksParams;
 		if (!$valid) {
 			$f->collapsed = Inputfield::collapsedHidden;
 		}
