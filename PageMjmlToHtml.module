@@ -24,7 +24,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		return [
 			"title" => "MJML to HTML",
 			"author" => "EPRC",
-			"version" => "1.1.8",
+			"version" => "1.1.9",
 			"summary" => "Allows you to write your Processwire template using MJML and get a converted HTML output using MJML API.",
 			"href" => "https://github.com/romaincazier/PageMjmlToHtml",
 			"icon" => "code",
@@ -151,7 +151,8 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$parentEvent = $event->arguments(0);
 		$page = $parentEvent->object;
 		$template = $page->template;
-		$rootPage = $this->sanitizer("httpUrl", $this->relativeLinksHost) ?: $this->pages(1);
+		$rootPageUrl = $this->sanitizer("httpUrl", $this->relativeLinksHost)
+			?: $this->pages(1)->httpUrl;
 
 		if($template->name === "admin") return;
 		if(!in_array($template->id, $this->allowedTemplates)) return;
@@ -161,7 +162,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 			$params = $this->getRelativeLinksParams($page);
 			$mjml = preg_replace_callback(
 				'/href=(?:\"|\')(.+)(?:\"|\')/U',
-				function($matches) use ($rootPage, $params) {
+				function($matches) use ($rootPageUrl, $params) {
 					if(
 						strpos($matches[1], "http") === 0
 						|| strpos($matches[1], "mailto") === 0
@@ -170,7 +171,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 						return $matches[0];
 					}
 					$href = "href=\"";
-					$href .= $rootPage->httpUrl;
+					$href .= $rootPageUrl;
 					$href .= substr($matches[1], 1);
 					if($params) {
 						if(strpos($matches[1], "?") === false) {
