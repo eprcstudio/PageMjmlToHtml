@@ -737,6 +737,15 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		}
 		$inputfields->add($f);
 
+		$fieldset = $modules->get("InputfieldFieldset");
+		$fieldset->label = "Files";
+		$fieldset->set('themeOffset', 1); 
+		if (!$valid) {
+			$fieldset->collapsed = Inputfield::collapsedHidden;
+		} elseif (!$this->config->useMarkupRegions) {
+			$fieldset->collapsed = Inputfield::collapsedYes;
+		}
+
 		$f = $modules->get("InputfieldCheckbox");
 		$f->attr("name", "noAppendFile");
 		$f->checked = $this->noAppendFile === 1;
@@ -746,10 +755,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$f->label2 = $this->_("Yes");
 		$f->icon = "chain-broken";
 		$f->value = $this->noAppendFile;
-		if (!$valid) {
-			$f->collapsed = Inputfield::collapsedHidden;
-		}
-		$inputfields->add($f);
+		$fieldset->add($f);
 
 		$f = $modules->get("InputfieldCheckbox");
 		$f->attr("name", "noPrependFile");
@@ -760,10 +766,16 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$f->icon = "chain-broken";
 		$f->showIf = "noAppendFile=1";
 		$f->value = $this->noPrependFile;
+		$fieldset->add($f);
+		
+		$inputfields->add($fieldset);
+
+		$fieldset = $modules->get("InputfieldFieldset");
+		$fieldset->label = "Cache";
+		$fieldset->set('themeOffset', 1);
 		if (!$valid) {
-			$f->collapsed = Inputfield::collapsedHidden;
+			$fieldset->collapsed = Inputfield::collapsedHidden;
 		}
-		$inputfields->add($f);
 
 		$f = $modules->get("InputfieldText");
 		$f->attr("name", "cachePerGet");
@@ -773,12 +785,8 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$f->notes = $this->_("If entering more than one, separate each by a space. To generate a unique output when any variable is present, enter just an asterisk: *");
 		$f->placeholder = "param1 param2 ...";
 		$f->value = $this->cachePerGet;
-		if (!$valid) {
-			$f->collapsed = Inputfield::collapsedHidden;
-		} else {
-			$f->collapsed = InputField::collapsedBlank;
-		}
-		$inputfields->add($f);
+		$f->collapsed = InputField::collapsedBlank;
+		$fieldset->add($f);
 
 		$f = $modules->get("InputfieldCheckbox");
 		$f->attr("name", "superuserNoCache");
@@ -788,12 +796,8 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$f->label = $this->_("Bypass cache for superusers?");
 		$f->label2 = $this->_("Yes");
 		$f->icon = "user";
-		if (!$valid) {
-			$f->collapsed = Inputfield::collapsedHidden;
-		} else {
-			$f->collapsed = InputField::collapsedBlank;
-		}
-		$inputfields->add($f);
+		$f->collapsed = InputField::collapsedBlank;
+		$fieldset->add($f);
 
 		$f = $modules->get("InputfieldAsmSelect");
 		$f->attr("name", "rolesNoCache");
@@ -807,10 +811,26 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		}
 		$f->showIf = "superuserNoCache=1";
 		$f->value = $this->rolesNoCache;
+		$fieldset->add($f);
+
+		$f = $modules->get("InputfieldCheckbox");
+		$f->attr("name", "clear");
+		$f->label = $this->_("Clear the cache for all templates?");
+		$f->label2 = $this->_("Yes");
+		$f->icon = "trash-o";
 		if (!$valid) {
 			$f->collapsed = Inputfield::collapsedHidden;
 		}
-		$inputfields->add($f);
+		$fieldset->add($f);
+
+		$inputfields->add($fieldset);
+
+		$fieldset = $modules->get("InputfieldFieldset");
+		$fieldset->label = "Links";
+		$fieldset->set('themeOffset', 1);
+		if (!$valid) {
+			$fieldset->collapsed = Inputfield::collapsedHidden;
+		}
 
 		$f = $modules->get("InputfieldCheckbox");
 		$f->attr("name", "convertRelativeLinks");
@@ -820,12 +840,8 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$f->label = $this->_("Convert relative links?");
 		$f->label2 = $this->_("Yes");
 		$f->icon = "link";
-		if (!$valid) {
-			$f->collapsed = Inputfield::collapsedHidden;
-		} else {
-			$f->collapsed = InputField::collapsedBlank;
-		}
-		$inputfields->add($f);
+		$f->collapsed = InputField::collapsedBlank;
+		$fieldset->add($f);
 
 		$f = $modules->get("InputfieldText");
 		$f->attr("name", "relativeLinksHost");
@@ -839,10 +855,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$f->placeholder = $this->pages(1)->httpUrl;
 		$f->showIf = "convertRelativeLinks=1";
 		$f->value = $this->relativeLinksHost;
-		if (!$valid) {
-			$f->collapsed = Inputfield::collapsedHidden;
-		}
-		$inputfields->add($f);
+		$fieldset->add($f);
 
 		$f = $modules->get("InputfieldText");
 		$f->attr("name", "relativeLinksParams");
@@ -850,14 +863,13 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$f->description = $this->_("You can append query parameters to converted links, i.e: if you want to have control over you `utm_` parameters. You can also use page fields within `{brackets}`");
 		$f->label = $this->_("Append query parameters");
 		$f->icon = "question";
-		$f->notes = $this->_("If a query string is already present in the url, your parameters will simply be appended");
+		$f->notes = $this->_("If a query string is already present in the url, your parameters are simply appended");
 		$f->placeholder = "param1=value&param2=value&...";
 		$f->showIf = "convertRelativeLinks=1";
 		$f->value = $this->relativeLinksParams;
-		if (!$valid) {
-			$f->collapsed = Inputfield::collapsedHidden;
-		}
-		$inputfields->add($f);
+		$fieldset->add($f);
+
+		$inputfields->add($fieldset);
 
 		$f = $modules->get("InputfieldCheckbox");
 		$f->attr("name", "disableMinify");
@@ -871,17 +883,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		} else {
 			$f->collapsed = InputField::collapsedBlank;
 		}
-		$inputfields->add($f);
-
-		$f = $modules->get("InputfieldCheckbox");
-		$f->attr("name", "clear");
-		$f->label = $this->_("Clear the cache for all templates?");
-		$f->label2 = $this->_("Yes");
-		$f->icon = "trash-o";
-		$f->set('themeOffset', 1); 
-		if (!$valid) {
-			$f->collapsed = Inputfield::collapsedHidden;
-		}
+		$f->set('themeOffset', 1);
 		$inputfields->add($f);
 
 		return $inputfields;
