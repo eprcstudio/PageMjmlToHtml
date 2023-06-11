@@ -255,17 +255,26 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 	 * Make a call to the MJML API using the credentials provided in the
 	 * module’s config. The HTTP code and errors (if any) are populated as well
 	 * 
-	 * @param string $mjml MJML markup to convert
+	 * @param string|Array $mjml MJML markup to convert or acts as $api if it is
+	 * an Array
+	 * @param Array $api API Credentials to test the call with (expected keys:
+	 * `id` and `key`)
 	 * @return object
 	 * 
 	 */
-	private function callToApi(string $mjml = "<mjml></mjml>") {
+	private function callToApi($mjml = "<mjml></mjml>", $api = []) {
+		if(is_array($mjml)) {
+			$api = $mjml;
+			$mjml = "<mjml></mjml>";
+		}
+		$id = $api["id"] ?? $this->apiId;
+		$key = $api["key"] ?? $this->apiKey;
 		$json = json_encode($mjml);
 		$http = new WireHttp();
-		$user = base64_encode("{$this->apiId}:{$this->apiKey}");
+		$user = base64_encode("$id:$key");
 		$http->setHeader("authorization", "basic $user");
 		$response = $http->post($this->apiUrl, "{\"mjml\":$json}", ["use" => "curl"]);
-		$response = json_decode($response);
+		$response = json_decode($response) ?? (object) ["message" => ""];
 		$response->code = $http->getHttpCode();
 		$response->error = $http->getError();
 		$response->mjml = $mjml;
@@ -632,43 +641,34 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		) {
 			$this->clearAllCache();
 		}
-		if(
-			($data["apiKey"] !== $this->apiKey && !$data["apiKey"])
-			|| ($data["apiId"] !== $this->apiId && !$data["apiId"])
+		if(!$data["apiKey"] || !$data["apiId"]) {
+			$this->clearAllCache();
+			$data["areCredentialsValid"] = false;
+		} elseif(
+			!$data["areCredentialsValid"]
+			|| $data["apiId"] !== $this->apiId
+			|| $data["apiKey"] !== $this->apiKey
 		) {
 			$this->clearAllCache();
-			$modules = $this->modules();
-			$moduleConfig = $modules->getModuleConfigData($this);
-			$moduleConfig["areCredentialsValid"] = false;
-			$modules->saveModuleConfigData($this, $moduleConfig);
+			$response = $this->callToApi(["id" => $data["apiId"], "key" => $data["apiKey"]]);
+			if($response->code !== 200) {
+				$data["areCredentialsValid"] = false;
+				$this->error("{$response->error} {$response->message}");
+			} else {
+				$data["areCredentialsValid"] = true;
+				$this->message($this->_("Your credentials are valid and the API is ready to use"));
+			}
 		}
+		$event->arguments(1, $data);
 	}
 
 	public function getModuleConfigInputfields(InputfieldWrapper $inputfields) {
 		$modules = $this->modules();
-		$moduleConfig = $modules->getModuleConfigData($this);
 
-		$error = "";
-		$valid = false;
-		if($this->apiId && $this->apiKey) {
-			$response = $this->callToApi();
-			if($response->code !== 200) {
-				$error = $this->getHttpMessage($response->code);
-				$this->error("{$response->error} {$response->message}");
-			} else {
-				$valid = true;
-				if($moduleConfig["areCredentialsValid"] !== $valid) {
-					$this->message($this->_("Your credentials are valid and the API is ready to use"));
-				}
-			}
-			if($moduleConfig["areCredentialsValid"] !== $valid) {
-				$moduleConfig["areCredentialsValid"] = $valid;
-				$modules->saveModuleConfigData($this, $moduleConfig);
-			}
-		}
+		$valid = $this->areCredentialsValid;
+		$validLabel = $valid ? " - " . $this->_("VALIDATED") . "!" : "";
 
 		$wrapper = $modules->get("InputfieldFieldset");
-		$validLabel = $valid ? " - " . $this->_("VALIDATED") . "!" : "";
 		$wrapper->label = $this->_("MJML API Authentification") . $validLabel;
 		$wrapper->description = sprintf($this->_('Get an application ID and a secret key ([link](%s)) and paste these here'), "https://mjml.io/api/");
 		$wrapper->icon = "key";
@@ -687,9 +687,6 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$f->label = $this->_("Application ID");
 		$f->required = true;
 		$f->value = $this->apiId;
-		if($error) {
-			$f->error($error);
-		}
 		$wrapper->add($f);
 
 		$f = $modules->get("InputfieldText");
@@ -698,9 +695,6 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$f->label = $this->_("Secret key");
 		$f->required = true;
 		$f->value = $this->apiKey;
-		if($error) {
-			$f->error($error);
-		}
 		$wrapper->add($f);
 
 		$inputfields->add($wrapper);
