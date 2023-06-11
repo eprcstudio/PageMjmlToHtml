@@ -47,7 +47,8 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 			"disableMinify" => 0,
 			"convertRelativeLinks" => 0,
 			"relativeLinksHost" => "",
-			"relativeLinksParams" => ""
+			"relativeLinksParams" => "",
+			"relativeLinksIgnore" => "",
 		];
 	}
 
@@ -160,15 +161,27 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$mjml = $parentEvent->return;
 		if($this->convertRelativeLinks) {
 			$params = $this->getRelativeLinksParams($page);
+			$ignore = explode("\n", $this->relativeLinksIgnore);
 			$mjml = preg_replace_callback(
 				'/href=(?:\"|\')(.+)(?:\"|\')/U',
-				function($matches) use ($rootPageUrl, $params) {
+				function($matches) use ($rootPageUrl, $params, $ignore) {
 					if(
 						strpos($matches[1], "http") === 0
 						|| strpos($matches[1], "mailto") === 0
 						|| strpos($matches[1], "tel") === 0
 					) {
 						return $matches[0];
+					}
+					foreach($ignore as $i) {
+						$i = trim($i);
+						if(strpos($i, "regex:") === 0) {
+							$regex = "{" . trim(substr($i, 6)) . "}";
+							if(preg_match($regex, $matches[1])) {
+								return $matches[0];
+							}
+						} elseif(strpos($matches[1], $i) === 0) {
+							return $matches[0];
+						}
 					}
 					$href = "href=\"";
 					$href .= $rootPageUrl;
@@ -835,7 +848,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$f = $modules->get("InputfieldCheckbox");
 		$f->attr("name", "convertRelativeLinks");
 		$f->checked = $this->convertRelativeLinks === 1;
-		$f->columnWidth = 33;
+		$f->columnWidth = 50;
 		$f->description = $this->_("Ideally you should handle this in your textarea’s setting, however in cases where you can’t you can toggle this option to convert relative links into absolute ones");
 		$f->label = $this->_("Convert relative links?");
 		$f->label2 = $this->_("Yes");
@@ -845,7 +858,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 
 		$f = $modules->get("InputfieldText");
 		$f->attr("name", "relativeLinksHost");
-		$f->columnWidth = 34;
+		$f->columnWidth = 50;
 		$f->description = sprintf($this->_("By default the prepended host is the root’s page `httpUrl`"), $this->pages(1)->httpUrl);
 		$f->label = $this->_("Prepend a different host");
 		$f->icon = "link";
@@ -859,7 +872,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 
 		$f = $modules->get("InputfieldText");
 		$f->attr("name", "relativeLinksParams");
-		$f->columnWidth = 33;
+		$f->columnWidth = 50;
 		$f->description = $this->_("You can append query parameters to converted links, i.e: if you want to have control over you `utm_` parameters. You can also use page fields within `{brackets}`");
 		$f->label = $this->_("Append query parameters");
 		$f->icon = "question";
@@ -867,6 +880,17 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$f->placeholder = "param1=value&param2=value&...";
 		$f->showIf = "convertRelativeLinks=1";
 		$f->value = $this->relativeLinksParams;
+		$fieldset->add($f);
+
+		$f = $modules->get("InputfieldTextarea");
+		$f->attr("name", "relativeLinksIgnore");
+		$f->columnWidth = 50;
+		$f->description = $this->_("You can decide which links (with a matching `href`) to ignore by inserting one string per line and prepend with `regex:` if you want to use a regular expression. This is useful to skip keywords from emailing tools, i.e: `\*|UNSUBSCRIBE|\*`");
+		$f->label = $this->_("Skip specific links");
+		$f->icon = "chain-broken";
+		$f->placeholder = "link1\nlink2\nregex:\*\|.*\|\*";
+		$f->showIf = "convertRelativeLinks=1";
+		$f->value = $this->relativeLinksIgnore;
 		$fieldset->add($f);
 
 		$inputfields->add($fieldset);
