@@ -260,7 +260,10 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 	 */
 	private function getRelativeLinksParams(Page $page) {
 		if(!$this->relativeLinksParams) return "";
-		$params = $page->getText($this->relativeLinksParams, true);
+		$params = $this->relativeLinksParams;
+		if(strpos($params, "{") !== false) {
+			$params = $page->getText($params, true);
+		}
 		$params = $this->sanitizer("url", "https://eprc.studio/?$params");
 		return str_replace("https://eprc.studio/?", "", $params);
 	}
