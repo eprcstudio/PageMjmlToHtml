@@ -154,6 +154,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$template = $page->template;
 		$rootPageUrl = $this->sanitizer("httpUrl", $this->relativeLinksHost)
 			?: $this->pages(1)->httpUrl;
+		$rootPageUrl = rtrim($rootPageUrl, '/') . '/'; // force trailing slash
 
 		if($template->name === "admin") return;
 		if(!in_array($template->id, $this->allowedTemplates)) return;
@@ -184,9 +185,12 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 							return $matches[0];
 						}
 					}
+					if(strpos($matches[1], "/") === 0) {
+						$matches[1] = substr($matches[1], 1);
+					}
 					$href = "href=\"";
 					$href .= $rootPageUrl;
-					$href .= substr($matches[1], 1);
+					$href .= $matches[1];
 					if($params) {
 						if(strpos($matches[1], "?") === false) {
 							$href .= "?";
@@ -261,7 +265,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 	private function getRelativeLinksParams(Page $page) {
 		if(!$this->relativeLinksParams) return "";
 		$params = $this->relativeLinksParams;
-		if(strpos($params, "{") !== false) {
+		if(strpos($this->relativeLinksParams, "{") !== false) {
 			$params = $page->getText($params, true);
 		}
 		$params = $this->sanitizer("url", "https://eprc.studio/?$params");
