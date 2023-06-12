@@ -24,7 +24,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		return [
 			"title" => "MJML to HTML",
 			"author" => "EPRC",
-			"version" => "1.2.2",
+			"version" => "1.2.3",
 			"summary" => "Allows you to write your Processwire template using MJML and get a converted HTML output using MJML API.",
 			"href" => "https://github.com/romaincazier/PageMjmlToHtml",
 			"icon" => "code",
@@ -861,7 +861,6 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		$f->label = $this->_("Convert relative links?");
 		$f->label2 = $this->_("Yes");
 		$f->icon = "link";
-		$f->collapsed = InputField::collapsedBlank;
 		$fieldset->add($f);
 
 		$f = $modules->get("InputfieldText");
