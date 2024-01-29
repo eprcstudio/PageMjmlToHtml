@@ -26,7 +26,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 			"author" => "EPRC",
 			"version" => "1.2.3",
 			"summary" => "Allows you to write your Processwire template using MJML and get a converted HTML output using MJML API.",
-			"href" => "https://github.com/romaincazier/PageMjmlToHtml",
+			"href" => "https://github.com/eprcstudio/PageMjmlToHtml",
 			"icon" => "code",
 			"autoload" => true,
 			"singular" => true,
