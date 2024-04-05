@@ -24,7 +24,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 		return [
 			"title" => "MJML to HTML",
 			"author" => "EPRC",
-			"version" => "1.2.3",
+			"version" => "1.2.4",
 			"summary" => "Allows you to write your Processwire template using MJML and get a converted HTML output using MJML API.",
 			"href" => "https://github.com/eprcstudio/PageMjmlToHtml",
 			"icon" => "code",
@@ -330,7 +330,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 	/**
 	 * Render a debug view.
 	 * 
-	 * If there is no (XML) warnings or errors we just return `false`,
+	 * If there is no errors we just return `false`,
 	 * otherwise we provide a simple markup viewer with an highlight on
 	 * problematic lines. Note it might not be 100% accurate
 	 * 
@@ -340,32 +340,6 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 	 */
 	private function renderDebugView($mjml) {
 		$debug = false;
-
-		// Check for any markup issues
-		$mjml->warnings = [];
-		$checkErrors = libxml_use_internal_errors(true);
-		$xml = simplexml_load_string($mjml->mjml);
-		if ($xml === false) {
-			foreach(libxml_get_errors() as $error) {
-				// We don't want a complain about &nbsp; or other HTML entities
-				if(strpos($error->message, "Entity") !== false) continue;
-				preg_match("/line (\d+)/", $error->message, $match);
-				if(count($match)) {
-					// We want a warning on the origin line as well
-					$mjml->warnings[] = (object)[
-						"line" => (int)$match[1],
-						"link" => $error->line,
-						"message" => trim($error->message),
-					];
-				}
-				$mjml->warnings[] = (object)[
-					"line" => $error->line,
-					"message" => trim($error->message),
-				];
-			}
-		}
-		libxml_clear_errors();
-		libxml_use_internal_errors($checkErrors);
 
 		// Start the debug view
 		$view = "<style>";
@@ -395,29 +369,10 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 				});
 			}
 
-			// Check if there is any warning for this line
-			$warnings = [];
-			if(!empty($mjml->warnings)) {
-				$debug = true;
-				$warnings = array_filter($mjml->warnings, function($item) use($num) {
-					return $item->line === $num;
-				});
-			}
-
-			// Wrap the line with a error/warning message
+			// Wrap the line with an error message
 			if(!empty($errors)) {
-				if(!empty($warnings)) {
-					$errors = array_merge($errors, $warnings);
-				}
 				$line .= "<span class=\"error\" data-message=\"";
 				$line .= trim(array_reduce($errors, function($carry, $item) {
-					$carry .= $item->message . "\n";
-					return $carry;
-				}));
-				$line .= "\">";
-			} elseif(!empty($warnings)) {
-				$line .= "<span class=\"warning\" data-message=\"";
-				$line .= trim(array_reduce($warnings, function($carry, $item) {
 					$carry .= $item->message . "\n";
 					return $carry;
 				}));
@@ -427,8 +382,8 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 			$line .= "<span class=\"line\">$num</span>";
 
 			// Indentation
-			preg_match_all("/<(?!\/)[^>]+(?<!\/)>/", $c, $openingTags);
-			preg_match_all("/<\/[^>]+>/", $c, $closingTags);
+			preg_match_all("/<(?!\/|\!)(?!area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)[^<]+?(?<!\/)>/", $c, $openingTags);
+			preg_match_all("/<\/.+?>/", $c, $closingTags);
 			if(count($openingTags[0]) < count($closingTags[0])) {
 				$depth--;
 			}
@@ -441,7 +396,7 @@ class PageMjmlToHtml extends WireData implements Module, ConfigurableModule {
 
 			$line .= htmlentities($c);
 
-			if(!empty($errors) || !empty($warnings)) {
+			if(!empty($errors)) {
 				$line .= "</span>";
 			}
 
